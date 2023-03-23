@@ -1,0 +1,398 @@
+#This file contains Rcode for generating plots and tables in section 4 corresponding to the manuscript "Causality in extremes of time series". 
+#In case of questions or a mistake, contact juraj.bodik@unil.ch
+
+library(EnvStats) #or some other package to generate pareto noise
+
+
+#Section 4.2. fig 2
+#Histograms for hatGamma
+n=5000
+
+result1=c()
+result2=c()
+for (j in 1:1000) {
+  
+  epsilon_a=rcauchy(n, 1)
+  epsilon_b=rcauchy(n, 1)
+  
+  b=rep(0, n);a=rep(0, n)
+  
+  for (i in 3:n) {
+    a[i]=0.5*a[i-1] +epsilon_a[i]
+    b[i]=0.5*b[i-1]  +0.5*a[i-2]+epsilon_b[i]
+  }
+  x=data.frame(a,b)
+  
+  C=CTC(x, lag=2)
+  result1=c(result1, C[1,1])
+  result2=c(result2, C[2,1])
+}
+
+
+hist(result2, col="red", breaks = 15, ylim=c(0,350), xlim=c(0.58, 1),
+     main="Distributions", xlab=expression(hat(Gamma))   )
+hist(result1,col="blue" ,breaks = 6, add = TRUE)
+legend(0.58, 350, c(expression(X %->% Y), expression(Y %->% X)), col = c("blue","red"), lty = 1, lwd=2, box.lty=0)
+
+
+
+
+
+
+
+
+
+#############################################################################
+# Section 4.2., Table 2 
+# for each combination of delta, n, distribution we computed it and rewrote to the table by hand
+n=100
+delta = 0.1
+
+result1=c()
+result2=c()
+for (j in 1:500) {
+  
+  epsilon_a=rpareto(n, 1,1)#change to rnorm for Gaussian case
+  epsilon_b=rpareto(n, 1,1)
+  
+  b=rep(0, n);a=rep(0, n)
+  
+  for (i in 3:n) {
+    a[i]=0.5*a[i-1] +epsilon_a[i]
+    b[i]=0.5*b[i-1]  +delta*a[i-2]+epsilon_b[i]
+  }
+  x=data.frame(a,b)
+  
+  C=CTC(x, lag=2)
+  result1=c(result1, C[1,1])
+  result2=c(result2, C[2,1])
+}
+
+
+median(result1); as.numeric(quantile(result1, 0.9)-median(result1))
+median(result2); as.numeric(quantile(result2, 0.9)-median(result2))
+
+
+###########PLOT IN SECTION 4.3, FIG 3
+#Choice of threshold k
+#Here, you need to rewrite the code for CTC by erasing the second line in the code and replacing 'v' by 'k'
+n=1000
+sekvence = seq(2, 200, by=4)
+
+vysledok1=c();vysledok2=c();vysledok3=c()#translation of "vysledok" is "final result"
+vysledok4=c();vysledok5=c();vysledok6=c()
+for (k in sekvence) {
+  vysledokk1=c() 
+  vysledokk2=c() 
+  
+  for (j in 1:100) {
+    epsilon_a=rcauchy(n)
+    epsilon_b=rcauchy(n)
+    
+    b=rep(0, n);a=rep(0, n)
+    
+    for (i in 7:n) {
+      a[i]=0.5*a[i-1] +epsilon_a[i]
+      b[i]=0.5*b[i-1]  +0.5*a[i-2]+epsilon_b[i]
+    }
+    x=data.frame(a,b)
+    C=CTC(x, lag=2, k = k)
+    vysledokk1=c(vysledokk1, C[1,1])
+    vysledokk2=c(vysledokk2, C[2,1])
+  }
+  vysledok1=c(vysledok1, as.numeric(quantile(vysledokk1, 0.1)))
+  vysledok2=c(vysledok2, mean(vysledokk1))
+  vysledok3=c(vysledok3, as.numeric(quantile(vysledokk1, 0.9)))
+  
+  vysledok4=c(vysledok4, as.numeric(quantile(vysledokk2, 0.1)))
+  vysledok5=c(vysledok5, mean(vysledokk2))
+  vysledok6=c(vysledok6, as.numeric(quantile(vysledokk2, 0.9)))
+}
+
+
+plot(vysledok1~sekvence, type = "l", lwd=1, col="blue", ylim=c(0.6,1), xlab = "k", ylab="CTC", main="Threshold")
+lines(vysledok2~sekvence, type = "l", lwd=3, col="blue")
+lines(vysledok3~sekvence, type = "l", lwd=1, col="blue")
+
+lines(vysledok4~sekvence, type = "l", lwd=1, col="red")
+lines(vysledok5~sekvence, type = "l", lwd=3, col="red")
+lines(vysledok6~sekvence, type = "l", lwd=1, col="red")
+
+abline(v=33, lty=3)
+
+text(12, 0.55, expression(sqrt(n)))
+legend(38,0.65, legend=c(expression(X %->% Y   ), expression(Y %->% X  )),
+       col=c("blue", "red"), lwd=3, box.lty=0)
+
+
+
+###########PLOT IN SECTION 4.4, FIG 4
+#Extremal delay p
+n=1000
+
+
+vysledok1=c();vysledok2=c();vysledok3=c()#translation of "vysledok" is "final result"
+vysledok4=c();vysledok5=c();vysledok6=c()
+for (p in 1:50) {
+  vysledokk1=c() 
+  vysledokk2=c() 
+  
+  for (j in 1:100) {
+    epsilon_a=rcauchy(n)
+    epsilon_b=rcauchy(n)
+    
+    b=rep(0, n);a=rep(0, n)
+    
+    for (i in 7:n) {
+      a[i]=0.5*a[i-1] +epsilon_a[i]
+      b[i]=0.5*b[i-1]  +0.5*a[i-6]+epsilon_b[i]
+    }
+    x=data.frame(a,b)
+    C=CTC(x, lag=p)
+    vysledokk1=c(vysledokk1, C[1,1])
+    vysledokk2=c(vysledokk2, C[2,1])
+  }
+  vysledok1=c(vysledok1, as.numeric(quantile(vysledokk1, 0.1)))
+  vysledok2=c(vysledok2, mean(vysledokk1))
+  vysledok3=c(vysledok3, as.numeric(quantile(vysledokk1, 0.9)))
+  
+  vysledok4=c(vysledok4, as.numeric(quantile(vysledokk2, 0.1)))
+  vysledok5=c(vysledok5, mean(vysledokk2))
+  vysledok6=c(vysledok6, as.numeric(quantile(vysledokk2, 0.9)))
+}
+
+
+plot(vysledok1, type = "l", lwd=1, col="blue", ylim=c(0.5,1), xlab = "Extremal delay p", ylab="CTC", main="Delay choice")
+lines(vysledok2, type = "l", lwd=3, col="blue")
+lines(vysledok3, type = "l", lwd=1, col="blue")
+
+lines(vysledok4, type = "l", lwd=1, col="red")
+lines(vysledok5, type = "l", lwd=3, col="red")
+lines(vysledok6, type = "l", lwd=1, col="red")
+
+abline(v=6, lty=3)
+
+text(12, 0.55, "Minimal delay")
+legend(38,0.65, legend=c(expression(X %->% Y   ), expression(Y %->% X  )),
+       col=c("blue", "red"), lwd=3, box.lty=0)
+
+
+
+#PLOTS IN SECTION 4.6. CORRESPONDING TO THE TESTING PROCEDURE
+#SECTION 4.6. CORRESPONDING TO THE TESTING PROCEDURE
+
+#SECTION 4.5. 
+#Table 3; different tail behaviour of the noise
+#For each choice of thetaX, thetaY, thetaZ, deltaX, deltaY we rewrote the results into the table by hand
+thetaX = 1
+thetaY = 1
+thetaZ = 1
+
+deltaX = 0
+deltaY = 0
+
+n=1000
+number_of_repetitions=200
+
+result1=c(); result2=c()
+
+for (j in 1:number_of_repetitions) {
+  
+  #generate time series following Model 3
+  
+  epsilon_a=rt(n, df = thetaX)
+  epsilon_b=rt(n, df = thetaY)
+  epsilon_c=rt(n, df = thetaZ)
+  a=rep(0, n);b=rep(0, n);c=rep(0,n)
+  
+  for (i in 4:n) {
+    c[i]=0.5*c[i-1]                                +epsilon_c[i]
+    a[i]=0.5*a[i-1]   +0.5*c[i-2]  + deltaY*b[i-3] +epsilon_a[i]
+    b[i]=0.5*b[i-1]   +0.5*c[i-1]  + deltaX*a[i-3] +epsilon_b[i]
+  }
+  x=data.frame(a,b)
+  
+  finalCTC=CTC(x, lag=3)
+  
+  result1=c( result1,  as.numeric(finalCTC[1,]) )
+  result2=c( result2,   as.numeric(finalCTC[2,]) )
+  
+}
+
+median(result1); as.numeric(quantile(result1, 0.9)-median(result1))
+median(result2); as.numeric(quantile(result2, 0.9)-median(result2))
+median(result1-result2);as.numeric(quantile(result1-result2, 0.1)); as.numeric(quantile(result1-result2, 0.9))
+
+####################################################################################
+##FIG 6...  tau as a function of p
+#p=3
+n=1000
+number_of_repetitions=500
+
+absoluteresult1=list()
+absoluteresult2=list()
+for (p in seq(1, 21, by=5)) {
+  
+  v1=c()
+  v2=c()
+  for (j in 1:number_of_repetitions) {
+    
+    
+    prve=runif(1, 0, 1)
+    druhe=runif(1, 0, 1)
+    tri=runif(1, 0, 1) 
+    styri=runif(1, 0, 1)
+    
+    
+    epsilon_a=rpareto(n, 1)
+    epsilon_b=rpareto(n, 1)
+    epsilon_c=rpareto(n, 1);epsilon_c=rep(0,n)
+    b=rep(0, n);a=rep(0, n); c=rep(0,n)
+    
+    for (i in 6:n) {
+      c[i]=0.5*c[i-1]                  +epsilon_c[i]
+      a[i]=prve*a[i-1]    +tri*c[i-2]  +epsilon_a[i]
+      b[i]=druhe*b[i-1]   +styri*c[i-1]+ 0.5*abs(a[i-5])^(0.75) +epsilon_b[i]
+    }
+    x=data.frame(a,b)
+    
+    finalCTC=CTC(x, lag=p)
+    
+    v1=c( v1,  finalCTC[1,] )
+    v2=c( v2,  finalCTC[2,] )
+    
+  }
+  
+  result1=c()
+  result2=c()
+  
+  for (tau in seq(0.8, 1, by=0.01)) {
+    result1=c(result1, length(v1[v1>tau]))
+    result2=c(result2, length(v2[v2>tau]))
+  }
+  absoluteresult1[[(p+4)/5]] = result1
+  absoluteresult2[[(p+4)/5]] = result2
+}
+
+
+
+
+par(mfrow=c(1,2))#NOW PLOTTING IT
+
+plot(absoluteresult1[[5]]/5~seq(0.8, 1, by=0.01), type="l", 
+     col=5, lwd=3, lty=5, main=expression(X %->% Y   ), 
+     xlab=expression(tau), ylab="Inferring causality", 
+     cex.lab=1.5)
+for (i in 1:4) {
+  lines(absoluteresult1[[i]]/5~seq(0.8, 1, by=0.01), type="l", col=i, lwd=3, lty=i)
+}
+
+
+legend("bottomleft", legend=seq(1, 21, by=5),
+       col=seq(1, 5, by=1), lty=1:5, cex=0.85, lwd=3, title="p")
+
+
+
+
+plot( (500-absoluteresult2[[5]])/5~seq(0.8, 1, by=0.01), 
+      type="l", col=5, lwd=3, lty=5, main=expression(Y %->% X   ), 
+      xlab=expression(tau), ylab="Inferring non-causality",
+      cex.lab=1.5)
+for (i in 1:4) {
+  lines( (500-absoluteresult2[[i]])/5~seq(0.8, 1, by=0.01), type="l", col=i, lwd=3, lty=i)
+}
+
+abline(h=95, col="red")
+
+
+
+legend("bottomright", legend=seq(1, 21, by=5),
+       col=seq(1, 5, by=1), lty=1:5, cex=0.85, lwd=3, title="p")
+
+
+
+
+################################################################################
+#FIG 7...  tau as a function of N
+p=5
+n=1000
+number_of_repetitions=500
+
+absoluteresult1=list()
+absoluteresult2=list()
+sekv=seq(500, 8500, by=2000)
+for (n in sekv) {
+  
+  v1=c()
+  v2=c()
+  for (j in 1:number_of_repetitions) {
+    
+    
+    first=0.5
+    second=0.5
+    third=0.5 
+    fourth=0.5
+    
+    
+    epsilon_a=rpareto(n, 1)
+    epsilon_b=rpareto(n, 1)
+    epsilon_c=0.5*rpareto(n, 1);
+    b=rep(0, n);a=rep(0, n); c=rep(0,n)
+    
+    for (i in 6:n) {
+      c[i]=0.5*c[i-1]                  +epsilon_c[i]
+      a[i]=first*a[i-1]    +third*c[i-2]  +epsilon_a[i]
+      b[i]=second*b[i-1]   +fourth*c[i-1]+ 0.5*abs(a[i-5])^(0.75) +epsilon_b[i]
+    }
+    x=data.frame(a,b)
+    
+    finalCTC=CTC(x, lag=p)
+    
+    v1=c( v1,  finalCTC[1,] )
+    v2=c( v2,  finalCTC[2,] )
+    
+  }
+  
+  result1=c()
+  result2=c()
+  
+  for (tau in seq(0.8, 1, by=0.01)) {
+    result1=c(result1, length(v1[v1>tau]))
+    result2=c(result2, length(v2[v2>tau]))
+  }
+  absoluteresult1[[(n+1500)/2000]] = result1
+  absoluteresult2[[(n+1500)/2000]] = result2
+}
+
+
+
+par(mfrow=c(1,2))#### NOW PLOTTING IT
+
+max=5
+plot(absoluteresult1[[max]]/5~seq(0.8, 1, by=0.01), 
+     type="l", col=max, lwd=3, lty=max, main=expression(X %->% Y), 
+     xlab=expression(tau), ylab="Inferring causality", 
+     cex.lab=1.5)
+for (i in 1:5) {if(i!=max){
+  lines(absoluteresult1[[i]]/5~seq(0.8, 1, by=0.01), type="l", col=i, lwd=3, lty=i)
+}}
+legend("bottomleft", legend=sekv,
+       col=seq(1, 5, by=1), lty=1:5, cex=0.75, lwd=3, title="n")
+
+
+max=1
+plot(  (pocet-absoluteresult2[[max]])/5~seq(0.8, 1, by=0.01), 
+       type="l", col=max, lwd=3, lty=max, main=expression(Y %->% X), 
+       xlab=expression(tau), ylab="Inferring non-causality", 
+       cex.lab=1.5)
+for (i in 1:5) { if(i!=max){
+  lines(   (pocet-absoluteresult2[[i]])/5~seq(0.8, 1, by=0.01), type="l", col=i, lwd=3, lty=i)
+}}
+
+abline(h=95, col="red")
+
+legend("bottomright", legend=sekv,
+       col=seq(1, 5, by=1), lty=1:5, cex=0.75, lwd=3, title="n")
+
+
+
