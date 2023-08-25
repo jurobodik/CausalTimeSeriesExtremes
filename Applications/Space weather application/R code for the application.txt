@@ -1,0 +1,193 @@
+######THIS IS AN R CODE CONCERNING THE APPLICATION ABOUT GEOMAGNETIC STORMS. 
+######IT USES FUNCTION CTC(x), WHICH CAN BE FOUND IN OTHER TXT FILE
+library(ExtremeRisks)
+
+#######SOME DATA HANDLING #########
+data<- read.csv("NASA_dataset.txt")
+data=data[,-2] #Data contain an additional parameter not relevant to our work
+colnames(data)<-c("bz", "ae", "sym")
+data=data[data$bz !=-999,] #some measurments were not succesfull, and they are marked with -999. We erased them
+data$sym=-data$sym; data$ae=+data$ae; data$bz=-data$bz; 
+
+#######
+
+####PRELIMINARIES ABOUT THE TAIL INDEX
+k=500; big=500; small=20 
+HTailIndex(data$sym, k, var=TRUE, bigBlock=big, smallBlock=small)
+HTailIndex(data$ae, k, var=TRUE, bigBlock=big, smallBlock=small)
+HTailIndex(data$bz, k, var=TRUE, bigBlock=big, smallBlock=small)
+
+#########WE WILL COMPUTE CTC FOR EACH PAIR OF VARIABLES AND FOR EACH LAG<=24#############
+x=data.frame(data$bz, data$sym)
+CTC(x)
+
+result1=c();result2=c()
+for (k in seq(1, 24, 1)) {
+  C=CTC(x, lag=k)
+  result1=c(result1,  C$CTC[1])
+  result2=c(result2,  C$CTC[2])
+  # print(k)#computation of each lag takes about a 30 seconds on my computer
+}
+
+######THE SAME FOR OTHER PAIR
+
+x=data.frame(data$bz, data$ae)
+#CTC(x)
+
+result3=c();result4=c()
+for (k in seq(1, 24, 1)) {
+  C=CTC(x, lag=k)
+  result3=c(result3, C$CTC[1])
+  result4=c(result4, C$CTC[2])
+  # print(k)
+}
+
+###THE SAME FOR THE LAST PAIR
+x=data.frame(data$ae, data$sym)
+#CTC(x)
+
+result5=c();result6=c()
+for (k in seq(1, 24, 1)) {
+  C=CTC(x, lag=k)
+  result5=c(result5, C$CTC[1])
+  result6=c(result6, C$CTC[2])
+  # print(k)
+}
+
+####DRAW THE RESULTS IN A PLOT
+plot(result1, type="l", lwd=3, col="blue", xlab="Lag q", ylab="CTC", main="Space weather",xaxt = "n", ylim = c(0.6, 1));
+axis(1, 1:length(result1), seq(1, length(result1), 1))
+lines(result2, lty=4, lwd=1,col="blue", xlab="", ylab="", yaxt = "n")
+lines(result3, type="l", lwd=3, col="green", xlab="", ylab="", yaxt = "n")
+lines(result4, lty=4, lwd=1,col="green", xlab="", ylab="", yaxt = "n")
+lines(result5, type="l", lwd=3, col="brown", xlab="", ylab="", yaxt = "n")
+lines(result6, lty=4, lwd=1,col="brown", xlab="", ylab="", yaxt = "n")
+
+legend("bottomright", c("BZ->SYM", "SYM->BZ","BZ->AE", "AE->BZ","AE->SYM", "SYM->AE"), 
+       col = c("blue","blue", "green", "green", "brown", "brown"), lty = c(1,4,1,4,1,4))
+
+
+
+
+
+
+#########WE WILL COMPUTE CTC FOR EACH PAIR OF VARIABLES AND FOR DIFFERENT k#############
+#First, define CTC with parameter $k$ instead of $v$
+CTC<- function(x, lag=3, tau = 0.9, k,  both_ways=FALSE, derivative=FALSE){ 
+  n=nrow(x)  
+  
+  ##### Preliminary functions#######
+  
+  differentiate <- function(a){ #change X to X*
+    b=NULL
+    for (j in 1:ncol(a)) b=cbind(b,diff(a[,j]))
+    return(b)
+  }
+  
+  run_future_max <- function(x, k=3, instant=TRUE){ #instant= do we want to consider Y_0?
+    if (instant==TRUE) {q=0}else{q=1}
+    
+    n=length(x);  y=c()  
+    for (i in 1:n) {y=rbind(y, max(x[(min(n,i+q)):(min(n,i+k))]))}
+    
+    return(y)
+  }
+  
+  
+  transform_series<-function(x, move=TRUE){
+    
+    if(move){
+      x[,1]=x[,1]-median(x[,1]) 
+      x[,2]=x[,2]-median(x[,2]) 
+    }
+    
+    x[,1]=abs(x[,1])
+    x[,2]=abs(x[,2])
+    
+    return(x)
+  }
+  
+  ####computation of CTC in one direction
+  CTC_one <- function(x){
+    sort_x=data.frame(cbind(sort(x[,1]), sort(x[,2])))
+    i=which(x[,1]>=sort_x[n-k+1,1])
+    y=run_future_max(x[,2], lag, instant = FALSE)#we only need the maximum of the next lag values in the second series
+    C=sum(ecdf(x[,2])(y[i]))
+    return(C/length(i))
+  }
+  
+  
+  CTC_two<- function(x){ ###just do the same in the other direction
+    y=data.frame(x[,2], x[,1])
+    return(CTC_one(y))}
+  
+  
+  if (derivative==TRUE) {x=differentiate(x)}
+  if (both_ways==TRUE) {x=transform_series(x, TRUE)}
+  
+  
+  result=data.frame(rbind(CTC_one(x), CTC_two(x)))
+  
+  
+  #This is very adhoc and should not be relied on. In general, result should depend on the time series structure, number of data and 
+  final_estimate = "Causal direction not clear"
+  if (result[1,1] - result[2,1] >0.05 & result[1,1]>tau-0.05) { final_estimate = "Not convincingly X-->Y" }
+  if (result[2,1] - result[1,1] >0.05 & result[2,1]>tau-0.05) { final_estimate = "Not convincingly Y-->X" }
+  if (result[1,1] - result[2,1] >0.05 & result[1,1]>tau) { final_estimate = "X-->Y" }
+  if (result[2,1] - result[1,1] >0.05 & result[2,1]>tau) { final_estimate = "Y-->X" }
+  if (result[1,1]<tau-0.05 & result[2,1]<tau-0.05) { final_estimate = "No causality" }
+  if (result[1,1]>tau & result[2,1]>tau) { final_estimate = "X<-->Y or common cause" }
+  
+  result = data.frame(cbind(result, c(final_estimate, " ")))
+  colnames(result)<-c("CTC", "Graph estimate")
+  rownames(result)<-c("X-->Y ", "Y-->X ")
+  return(result)
+}
+
+
+#Here we continue with the plot
+x=data.frame(data$bz, data$sym)
+
+result1=c();result2=c()
+for (k in seq(50, 1000, by=50)) {
+  C=CTC(x, lag=1, k=k)
+  result1=c(result1,  C$CTC[1])
+  result2=c(result2,  C$CTC[2])
+  print(k)#computation of each lag takes about a 30 seconds on my computer
+}
+###
+x=data.frame(data$bz, data$ae)
+
+result3=c();result4=c()
+for (k in seq(50, 1000, by=50)) {
+  C=CTC(x, lag=1, k=k)
+  result3=c(result3,  C$CTC[1])
+  result4=c(result4,  C$CTC[2])
+  print(k)#computation of each lag takes about a 30 seconds on my computer
+}
+###
+x=data.frame(data$ae, data$sym)
+
+result5=c();result6=c()
+for (k in seq(50, 1000, by=50)) {
+  C=CTC(x, lag=1, k=k)
+  result5=c(result5,  C$CTC[1])
+  result6=c(result6,  C$CTC[2])
+  print(k)#computation of each lag takes about a 30 seconds on my computer
+}
+
+####DRAW THE RESULTS IN A PLOT
+plot(result1~seq(50, 1000, by=50), type="l", lwd=3, col="blue", xlab="Number of extremes k", ylab="CTC", main="Space weather", ylim = c(0.5, 1));
+lines(result2~seq(50, 1000, by=50), lty=4, lwd=2,col="blue", xlab="", ylab="", yaxt = "n")
+
+lines(result3~seq(50, 1000, by=50),  type="l", lwd=3,col="green", xlab="", ylab="", yaxt = "n")
+lines(result4~seq(50, 1000, by=50), lty=4, lwd=2,col="green", xlab="", ylab="", yaxt = "n")
+
+lines(result5~seq(50, 1000, by=50),  type="l", lwd=3,col="brown", xlab="", ylab="", yaxt = "n")
+lines(result6~seq(50, 1000, by=50), lty=4, lwd=2,col="brown", xlab="", ylab="", yaxt = "n")
+
+abline(v = 320, col = "red", lwd = 2)
+legend("bottomright", c("BZ->SYM", "SYM->BZ","BZ->AE", "AE->BZ","AE->SYM", "SYM->AE"), 
+       col = c("blue","blue", "green", "green", "brown", "brown"), lty = c(1,4,1,4,1,4), lwd = c(3,2,3,2,3,2))
+
+

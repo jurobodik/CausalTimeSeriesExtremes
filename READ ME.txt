@@ -1,0 +1,6 @@
+This is the supplementary package for the manuscript "Causality in extremes of time series". 
+
+The code was done in R, with an exception of section 4.7. where certain parts were coded in python. 
+
+The main function is the CTC() function, that you can find in a separate file. 
+

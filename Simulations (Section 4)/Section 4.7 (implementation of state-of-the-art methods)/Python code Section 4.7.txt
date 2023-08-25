@@ -1,0 +1,171 @@
+#PYTHON CODE
+#This file corresponds to Section 4.7. in the manuscript, where the goal is to compare our developed CTC method with state-of-the-art methods
+#This is Python code containing PCMCI and LPCMCI methods
+#We rewrote all results in the Table 4 by hand.
+
+#This is my first Python code ever, so be gentle ;)
+
+import numpy as np
+import matplotlib.pyplot as plt
+import tigramite as tg
+from tigramite.independence_tests.robust_parcorr import RobustParCorr
+from tigramite.pcmci import PCMCI
+import pandas as pd
+import matplotlib
+from matplotlib import pyplot as plt
+import sklearn
+
+import tigramite
+from tigramite import data_processing as pp
+from tigramite.toymodels import structural_causal_processes as toys
+
+from tigramite import plotting as tp
+from tigramite.pcmci import PCMCI
+from tigramite.lpcmci import LPCMCI
+
+from tigramite.independence_tests.parcorr import ParCorr
+from tigramite.independence_tests.robust_parcorr import RobustParCorr
+from tigramite.independence_tests.parcorr_wls import ParCorrWLS 
+from tigramite.independence_tests.gpdc import GPDC
+from tigramite.independence_tests.cmiknn import CMIknn
+from tigramite.independence_tests.cmisymb import CMIsymb
+from tigramite.independence_tests.gsquared import Gsquared
+from tigramite.independence_tests.regressionCI import RegressionCI
+
+
+def f(x):
+    if x > 50:
+        return x ** 0.75
+    else:
+        return 0
+
+
+def x_to_y(graph_array):    #We output that X causes Y if there is at least one arrow from X to Y. Even though this includes results such as common cause, we keep it like this so we are not unfair against this method since it only improves the resulting numbers
+    second_line = graph_array[0][1] #this corresponds to the second row in the estimated graph using PCMCI and LPCMCI methods
+    if '-->'  in second_line:
+        return 1
+    if '<->'  in second_line:
+        return 1
+    if 'o->'  in second_line:
+        return 1
+    else:
+        return 0
+def y_to_x(graph_array):   #We output Y causes X if and only if there is a directed arrow Y_{t-tau}-->X_t at some tau
+    third_line = graph_array[1][0]
+    if '-->'  in third_line 
+        return 1
+    else:
+        return 0
+
+
+################################################################################################################################################################
+##############################VAR model########################################################################################################################
+################################################################################################################################################################
+
+n=500             #change to 5000 for the other results
+number_of_repetitions = 100
+result1 = 0;result2 = 0    #1 corresponds to X-->Y direction, #2 corresponds to Y-->X direction
+lresult1 = 0;lresult2 = 0  #the same but for LPCMCI
+
+for i in range(number_of_repetitions):
+    epsilon_a = np.random.pareto(1, n) 
+    epsilon_b = np.random.pareto(1, n)
+    a=np.zeros(n);b=np.zeros(n)
+  
+    for i in range(2, n):
+        a[i]=0.5*a[i-1]                +epsilon_a[i]
+        b[i]=0.5*b[i-1]   + 0.5*a[i-2] +epsilon_b[i]
+  
+    data = pd.DataFrame({'a': a, 'b': b})
+
+    #plt.clf();plt.plot(data);plt.xlabel('Time');plt.ylabel('Value');plt.title('Time Series Plot');plt.show()
+
+    tau_max = 3
+    N=2
+
+    pcmci = PCMCI(dataframe=pp.DataFrame(data.values), cond_ind_test=RobustParCorr())
+    lpcmci = LPCMCI(dataframe=pp.DataFrame(data.values),cond_ind_test=RobustParCorr())
+
+    result_pcmci = pcmci.run_pcmci(tau_max=tau_max, pc_alpha=0.01)#If you dont like my constant pc_alpha=0.01 change to 'pc_alpha=None'. The results are worse when it chooses this coefficient automatically. 
+    result_lpcmci = lpcmci.run_lpcmci(tau_max=tau_max, pc_alpha=0.01)
+
+
+    graph_array = result_pcmci['graph']
+    result1 = result1 + x_to_y(graph_array)
+    result2 = result2 + y_to_x(graph_array)
+
+    graph_array = result_lpcmci['graph']
+    lresult1 = lresult1 + x_to_y(graph_array)
+    lresult2 = lresult2 + y_to_x(graph_array)
+
+#PCMCI results
+result1/number_of_repetitions #this corresponds to 'how many times the estimated graph had an arrow from X to Y, not nessesary at the correct lag'
+1-result2/number_of_repetitions #since Y does not cause X, we are interested in how many times we did NOT estimated an arrow from Y to X
+
+#LPCMCI results
+lresult1/number_of_repetitions
+1-lresult2/number_of_repetitions
+
+#If you want to see the plot...
+#  tp.plot_time_series_graph(
+#     figsize=(6, 4),
+#    val_matrix=lresults['val_matrix'],
+#    graph=lresults['graph'],
+#    var_names=var_names,
+#    link_colorbar_label='MCI',
+#    ); plt.show()
+
+
+
+################################################################################################################################################################
+##############################NAAR model########################################################################################################################
+################################################################################################################################################################
+
+n=500                          #change to 5000 for the other columns
+number_of_repetitions = 100
+result1 = 0;result2 = 0
+lresult1 = 0;lresult2 = 0
+
+for k in range(number_of_repetitions):
+    epsilon_a = np.random.pareto(1, n) 
+    epsilon_b = np.random.pareto(1, n)
+    epsilon_c = 0.5*np.random.pareto(1, n)
+    
+    a=np.zeros(n);b=np.zeros(n);c = np.zeros(n)
+  
+    for i in range(3, n):
+      c[i] = 0.5 * c[i-1] + epsilon_c[i]
+      a[i] = 0.5 * a[i-1] + 0.5 * c[i-2] + epsilon_a[i]
+      b[i] = 0.5 * b[i-1] + 0.5 * c[i-1] + f(a[i-3]) + epsilon_b[i]
+
+    data = pd.DataFrame({'a': a, 'b': b})
+
+    #plt.clf();plt.plot(data);plt.xlabel('Time');plt.ylabel('Value');plt.title('Time Series Plot');plt.show()
+
+    tau_max = 3
+    N=2
+
+    pcmci = PCMCI(dataframe=pp.DataFrame(data.values), cond_ind_test=RobustParCorr())
+    lpcmci = LPCMCI(dataframe=pp.DataFrame(data.values),cond_ind_test=RobustParCorr())
+
+    result_pcmci = pcmci.run_pcmci(tau_max=tau_max, pc_alpha=None)
+    result_lpcmci = lpcmci.run_lpcmci(tau_max=tau_max, pc_alpha=0.01)
+
+
+    graph_array = result_pcmci['graph']
+    result1 = result1 + x_to_y(graph_array)
+    result2 = result2 + y_to_x(graph_array)
+    
+    graph_array = result_lpcmci['graph']
+    lresult1 = lresult1 + x_to_y(graph_array)
+    lresult2 = lresult2 + y_to_x(graph_array)
+
+#PCMCI results
+result1/number_of_repetitions
+1-result2/number_of_repetitions 
+
+#LPCMCI results
+lresult1/number_of_repetitions
+1-lresult2/number_of_repetitions
+
+ 

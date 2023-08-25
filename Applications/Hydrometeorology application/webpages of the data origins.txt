@@ -1,0 +1,33 @@
+We collected the data from several webpages and several origins. Some of the data were
+used in other publications and precleaned before our project. Most of the origins of the
+data are written below. Last opened in 2019. 
+
+NINO
+
+http://www.cpc.ncep.noaa.gov/data/indices/
+http://climexp.knmi.nl/data/iersst_nino3a.dat     
+
+NAO
+
+https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/nao.shtml
+
+DMI
+
+https://psl.noaa/gov/data/timeseries/DMI
+https://psl.noaa.gov/gcos_wgsp/Timeseries/DMI/
+
+PDO
+
+https://psl.noaa.gov/gcos_wgsp/Timeseries/PDO/
+
+EASMI
+
+http://lijianping.cn/dct/page/65577
+
+AoR
+
+https://www.tropmet.res.in/Data%20Archival-51-Page
+https://tropmet.res.in/static_pages.php?page_id=53
+https://tropmet.res.in/static_pages.php?page_id=52
+https://tropmet.res.in/static_pages.php?page_id=52#data
+http://climexp.knmi.nl/data/pALLIN.dat  

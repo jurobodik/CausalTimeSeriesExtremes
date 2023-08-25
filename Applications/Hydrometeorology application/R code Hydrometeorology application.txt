@@ -1,0 +1,110 @@
+######THIS IS AN R CODE CONCERNING THE APPLICATION ABOUT THE HYDROMETEOROLOGICAL DATA. 
+######IT USES FUNCTION CTC(x), WHICH CAN BE FOUND IN THE OTHER TXT FILE
+library(readxl)
+library(ExtremeRisks)
+library(reshape2)
+
+#lines 1-82 are just boring data uploading.
+#The final result is dataset "data" which contains all 6 time series
+
+setwd("C:/Users/Acer/Desktop/Suplement/Hydrometeorology")
+####################
+######El Nino#######
+####################
+nic<- read_excel("El Nino.xlsx"); nic<- nic$ELNINO; 
+ElNino=as.numeric(nic[985:1740]) ##Years 1953-2015
+####################
+########DMI#########
+####################
+nic<- read_excel("DMI .xlsx");
+nic <- melt(nic, id.vars = "Year", variable.name = "Month", value.name = "Value")
+nic<-as.numeric(nic$Value)
+DMI=as.numeric(nic[985:1740]) ##Years 1953-2015
+####################
+########PDO#########
+####################
+nic<- read_excel("PDO.xlsx");
+nic <- melt(nic, id.vars = "Year", variable.name = "Month", value.name = "Value")
+nic<-as.numeric(nic$Value)
+PDO=nic[625:1380] ##Years 1953-2015
+####################
+########NAO#########
+####################
+nic<- read_excel("NAO.xlsx");
+nic <- melt(nic, id.vars = "Year", variable.name = "Month", value.name = "Value")
+nic<-as.numeric(nic$Value)
+NAO=nic[1045:1800] ##Years 1953-2015
+####################
+########EASMI#######
+####################
+nic<- read_excel("EASMI.xlsx");
+nic <- melt(nic, id.vars = "Year", variable.name = "Month", value.name = "Value")
+nic<-as.numeric(nic$Value)
+EASMI=nic[61:816]; EASMI=na.omit(EASMI) ##Years 1953-2015
+#erase seasonality 
+q=rep(0, 12) #q=average of months
+for (j in 1:12) {
+  for (i in 1:756) {
+    if (i%%12==j-1) {
+      q[j]=q[j]+EASMI[i]
+    }}
+  q[j]=q[j]/756*12}
+for (i in 1:756) {EASMI[i]=EASMI[i]-q[i%%12+1]}
+####################
+########AoR#########
+####################
+AOR<- read_excel("AoR.xlsx"); AOR<- data.frame(AOR[,2]); AOR=rbind(740, AOR); AOR=as.numeric(AOR[,1])
+#erase seasonality 
+q=rep(0, 12) #q=average of months
+for (j in 1:12) {
+  for (i in 1:756) {
+    if (i%%12==j-1) {
+      q[j]=q[j]+AOR[i]
+    }
+  }
+  q[j]=q[j]/756*12}
+for (i in 1:756) {AOR[i]=AOR[i]-q[i%%12+1]}
+
+
+####################
+##All together######
+####################
+data=data.frame(cbind(ElNino,NAO,DMI,PDO,EASMI,AOR))
+colnames(data)<-c("El Nino", "nao", "dmi", "pdo", "easmi", "aor")
+
+data$`El Nino` = + as.numeric(data$`El Nino`)
+data$dmi       = + as.numeric(data$dmi); 
+data$pdo       = + as.numeric(data$pdo); 
+data$nao       = + as.numeric(data$nao); 
+data$easmi     = - as.numeric(data$easmi); #low extremes are the interesting ones for EASMI. See e.g. http://ljp.gcess.cn/dct/page/65577
+data$aor       = + as.numeric(data$aor); 
+#You can also play with the signs here, they are interpretable in both cases (positive extremes and negative extremes)
+
+
+#################################################
+############Tail indexes#########################
+#################################################
+
+k=50; #50 seems as a "reasonable" constant after drawing the Hill plot. But we are only interested in the comparision, so it is not very important
+HTailIndex(data$`El Nino`, k, var=TRUE, varType = 'asym-Dep', bigBlock=1, smallBlock=1)
+HTailIndex(data$dmi, k, var=TRUE, varType = 'asym-Dep', bigBlock=1, smallBlock=1)
+HTailIndex(data$nao, k, var=TRUE, varType = 'asym-Dep', bigBlock=1, smallBlock=1)
+HTailIndex(data$pdo, k, var=TRUE, varType = 'asym-Dep', bigBlock=1, smallBlock=1)
+HTailIndex(data$easmi, k, var=TRUE, varType = 'asym-Dep', bigBlock=1, smallBlock=1)
+HTailIndex(data$aor, k, var=TRUE, varType = 'asym-Dep', bigBlock=1, smallBlock=1)
+
+
+#################################################
+############Numbers in Table 6###################
+#################################################
+
+for (i in 1:6) {
+  for (j in i:6) {
+    x=data.frame(data[,i], data[,j])
+    if(i!=j) {
+      print(c(colnames(data)[i], colnames(data)[j]))
+      print(CTC(x, lag=9)$CTC)
+    }}}
+
+
+
